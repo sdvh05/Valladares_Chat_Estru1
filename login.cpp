@@ -122,7 +122,7 @@ Login::Login(QWidget *parent)
 
     // Configuración de la ventana (tamaño ajustado)
     setWindowTitle("Login");
-    resize(500, 400);  // Tamaño más compacto: 500px ancho x 400px alto
+    resize(500, 400);
 }
 
 void Login::verificarCredenciales()
@@ -130,13 +130,16 @@ void Login::verificarCredenciales()
     QString usuario = usuarioInput->text().trimmed();
     QString contrasena = contrasenaInput->text().trimmed();
 
+    if (usuario.isEmpty() || contrasena.isEmpty()) {
+        QMessageBox::information(this, "Campos vacíos", "Por favor, llena los campos.");
+        return;
+    }
+
     if(master->login(usuario, contrasena)) {
-        // Pasar Master a Chat
         Chat *ventanaChat = new Chat(master);
         ventanaChat->show();
-
-
         this->close();
+
     } else {
         QMessageBox::warning(this, "Error", "Usuario o Contraseña Incorrecto");
         usuarioInput->clear();

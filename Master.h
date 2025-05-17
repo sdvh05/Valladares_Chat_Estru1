@@ -7,6 +7,7 @@
 #include <memory>
 #include <QList>
 #include <QString>
+#include <exception>
 
 #include "Usuario.h"
 
@@ -20,6 +21,8 @@ private:
     bool validateCredentials(const QString &username, const QString &password);
     QStringList findUserData(const QString &username);
     void loadExistingUser(const QStringList &userData);
+
+public:
     void cargarUsuarios();
 
 public:
@@ -59,6 +62,9 @@ public:
     QList<Usuario*> getUsers1() const;
     QList<Usuario*> getUsers2() const;
     QList<Usuario*> getUsers3() const;
+
+    QList<QString> getUsernamesPorEstado(int estado) const;
+    QList<Usuario*> cargarAmigos();
 };
 
 #endif // MASTER_H

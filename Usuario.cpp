@@ -26,8 +26,8 @@ Usuario::Usuario(QString username, QString nombreCompleto, QString email, QStrin
         registrarUsuario();
     }
 
-    qDebug() << "Ruta de allaccs.txt:" << QFileInfo("allaccs.txt").absoluteFilePath();
-    qDebug() << "Ruta de Estados:" << QDir("Estados").absolutePath();
+    //qDebug() << "Ruta de allaccs.txt:" << QFileInfo("allaccs.txt").absoluteFilePath();
+    //qDebug() << "Ruta de Estados:" << QDir("Estados").absolutePath();
 }
 
 // Métodos estáticos
@@ -270,6 +270,8 @@ void Usuario::crearChat(const QString &otroUsuario) {
     }
 }
 
+//Manejo Solicitudes
+//------------------------------------------------------------------------------------------------
 void Usuario::enviarSolicitud(const QString &receptor) {
     if (receptor == username) {
         QMessageBox::warning(nullptr, "Error", "No puedes enviarte una solicitud a ti mismo");
@@ -286,7 +288,7 @@ void Usuario::enviarSolicitud(const QString &receptor) {
     // Actualizar estado del receptor
     actualizarEstado(receptor, username, 2);
 
-    QMessageBox::information(nullptr, "Éxito", "Solicitud enviada correctamente");
+    QMessageBox::information(nullptr, "Éxito", "Solicitud enviada a: "+receptor);
 }
 
 void Usuario::aceptarSolicitud(const QString &solicitante) {
@@ -304,7 +306,7 @@ void Usuario::aceptarSolicitud(const QString &solicitante) {
     actualizarEstado(solicitante, username, 3);
     crearChat(solicitante);
 
-    QMessageBox::information(nullptr, "Éxito", "Solicitud aceptada correctamente");
+    QMessageBox::information(nullptr, "Éxito", "Solicitud aceptada correctamente \n Ahora son amigos con: "+solicitante);
 }
 
 void Usuario::NegarSolicitud(const QString &solicitante) {
@@ -321,8 +323,46 @@ void Usuario::NegarSolicitud(const QString &solicitante) {
     actualizarEstado(username, solicitante, 0);
     actualizarEstado(solicitante, username, 0);
 
-    QMessageBox::information(nullptr, "Éxito", "Solicitud negada correctamente");
+    QMessageBox::information(nullptr, "Bien", "Solicitud Negada a: "+solicitante);
 }
+
+void Usuario::EliminarAmigo(const QString& solicitante) {
+    if (solicitante == username) {
+        QMessageBox::warning(nullptr, "Error", "No puedes eliminarte a ti mismo.");
+        return;
+    }
+
+    if (obtenerEstado(solicitante) != 3) {
+        QMessageBox::warning(nullptr, "Error", "No son amigos.");
+        return;
+    }
+
+    actualizarEstado(username, solicitante, 0);
+    actualizarEstado(solicitante, username, 0);
+
+
+    QString basePath = "Chats/";
+    QString nombreArchivo1 = basePath + username + "-" + solicitante + ".txt";
+    QString nombreArchivo2 = basePath + solicitante + "-" + username + ".txt";
+
+
+    bool eliminado = false;
+
+    if (QFile::exists(nombreArchivo1)) {
+        QFile::remove(nombreArchivo1);
+        eliminado = true;
+    } else if (QFile::exists(nombreArchivo2)) {
+        QFile::remove(nombreArchivo2);
+        eliminado = true;
+    }
+
+    if (eliminado) {
+        QMessageBox::information(nullptr, "Hecho", "Tú y " + solicitante + " ya no son amigos. El historial de chat fue eliminado.");
+    } else {
+        QMessageBox::information(nullptr, "Hecho", "Tú y " + solicitante + " ya no son amigos. No se encontró historial de chat.");
+    }
+}
+//---------------------------------------------------------------------------------------------------------------
 
     QString Usuario::getUsername() const { return username; }
     QString Usuario::getNombreCompleto() const { return nombreCompleto; }
@@ -345,7 +385,7 @@ void Usuario::NegarSolicitud(const QString &solicitante) {
             while (!in.atEnd()) {
                 QString linea = in.readLine().trimmed();
                 QStringList partes = linea.split(',');
-                if (partes.size() >= 2 && partes[1] == "3") {  // estado 3 = amigos
+                if (partes.size() >= 2 && partes[1] == "3") {
                     amigos << partes[0];
                 }
             }

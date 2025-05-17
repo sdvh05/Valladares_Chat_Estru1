@@ -110,10 +110,35 @@ void AmigosManejo::cargarListaAnadir()
     const auto usuarios = master->getUsers0();
     for (Usuario* u : usuarios) {
         if (u) {
-            listaAnadir->addItem(u->getUsername());
+            QWidget* itemWidget = new QWidget;
+            QHBoxLayout* layout = new QHBoxLayout(itemWidget);
+            layout->setContentsMargins(5, 5, 5, 5);
+
+            QLabel* avatarLabel = new QLabel;
+            avatarLabel->setFixedSize(40, 40);
+            avatarLabel->setPixmap(QPixmap(u->getAvatar()).scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            avatarLabel->setScaledContents(true);
+
+            QVBoxLayout* infoLayout = new QVBoxLayout;
+            QLabel* lblNombre = new QLabel(u->getNombreCompleto());
+            QLabel* lblUsername = new QLabel("@" + u->getUsername());
+
+            infoLayout->addWidget(lblNombre);
+            infoLayout->addWidget(lblUsername);
+
+            layout->addWidget(avatarLabel);
+            layout->addLayout(infoLayout);
+
+            QListWidgetItem* item = new QListWidgetItem(listaAnadir);
+            item->setSizeHint(itemWidget->sizeHint());
+            item->setData(Qt::UserRole, u->getUsername());
+
+            listaAnadir->addItem(item);
+            listaAnadir->setItemWidget(item, itemWidget);
         }
     }
 }
+
 
 void AmigosManejo::cargarListaEnviadas()
 {
@@ -121,10 +146,35 @@ void AmigosManejo::cargarListaEnviadas()
     const auto usuarios = master->getUsers1();
     for (Usuario* u : usuarios) {
         if (u) {
-            listaEnviadas->addItem(u->getUsername());
+            QWidget* itemWidget = new QWidget;
+            QHBoxLayout* layout = new QHBoxLayout(itemWidget);
+            layout->setContentsMargins(5, 5, 5, 5);
+
+            QLabel* avatarLabel = new QLabel;
+            avatarLabel->setFixedSize(40, 40);
+            avatarLabel->setPixmap(QPixmap(u->getAvatar()).scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            avatarLabel->setScaledContents(true);
+
+            QVBoxLayout* infoLayout = new QVBoxLayout;
+            QLabel* lblNombre = new QLabel(u->getNombreCompleto());
+            QLabel* lblUsername = new QLabel("@" + u->getUsername());
+
+            infoLayout->addWidget(lblNombre);
+            infoLayout->addWidget(lblUsername);
+
+            layout->addWidget(avatarLabel);
+            layout->addLayout(infoLayout);
+
+            QListWidgetItem* item = new QListWidgetItem(listaEnviadas);
+            item->setSizeHint(itemWidget->sizeHint());
+            item->setData(Qt::UserRole, u->getUsername());
+
+            listaEnviadas->addItem(item);
+            listaEnviadas->setItemWidget(item, itemWidget);
         }
     }
 }
+
 
 void AmigosManejo::cargarListaRecibidas()
 {
@@ -132,10 +182,35 @@ void AmigosManejo::cargarListaRecibidas()
     const auto usuarios = master->getUsers2();
     for (Usuario* u : usuarios) {
         if (u) {
-            listaRecibidas->addItem(u->getUsername());
+            QWidget* itemWidget = new QWidget;
+            QHBoxLayout* layout = new QHBoxLayout(itemWidget);
+            layout->setContentsMargins(5, 5, 5, 5);
+
+            QLabel* avatarLabel = new QLabel;
+            avatarLabel->setFixedSize(40, 40);
+            avatarLabel->setPixmap(QPixmap(u->getAvatar()).scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            avatarLabel->setScaledContents(true);
+
+            QVBoxLayout* infoLayout = new QVBoxLayout;
+            QLabel* lblNombre = new QLabel(u->getNombreCompleto());
+            QLabel* lblUsername = new QLabel("@" + u->getUsername());
+
+            infoLayout->addWidget(lblNombre);
+            infoLayout->addWidget(lblUsername);
+
+            layout->addWidget(avatarLabel);
+            layout->addLayout(infoLayout);
+
+            QListWidgetItem* item = new QListWidgetItem(listaRecibidas);
+            item->setSizeHint(itemWidget->sizeHint());
+            item->setData(Qt::UserRole, u->getUsername());
+
+            listaRecibidas->addItem(item);
+            listaRecibidas->setItemWidget(item, itemWidget);
         }
     }
 }
+
 
 
 //Solicitudes
@@ -145,8 +220,9 @@ void AmigosManejo::enviarSolicitud()
     QListWidgetItem* item = listaAnadir->currentItem();
     if (!item) return;
 
-    QString receptor = item->text();
+    QString receptor = item->data(Qt::UserRole).toString();
     qDebug() << receptor;
+
     Usuario* actual = master->getUsuarioActual();
     if (!actual) return;
 
@@ -160,7 +236,7 @@ void AmigosManejo::aceptarSolicitud()
     QListWidgetItem* item = listaRecibidas->currentItem();
     if (!item) return;
 
-    QString solicitante = item->text();
+    QString solicitante = item->data(Qt::UserRole).toString();
     Usuario* actual = master->getUsuarioActual();
     if (!actual) return;
 
@@ -173,7 +249,7 @@ void AmigosManejo::rechazarSolicitud()
     QListWidgetItem* item = listaRecibidas->currentItem();
     if (!item) return;
 
-    QString solicitante = item->text();
+    QString solicitante = item->data(Qt::UserRole).toString();
     Usuario* actual = master->getUsuarioActual();
     if (!actual) return;
 

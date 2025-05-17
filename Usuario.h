@@ -33,6 +33,7 @@ public:
     void enviarSolicitud(const QString &receptor);
     void aceptarSolicitud(const QString &solicitante);
     void NegarSolicitud(const QString &solicitante);
+    void EliminarAmigo(const QString &amigo);
 
     QString getUsername() const;
     QString getNombreCompleto() const;

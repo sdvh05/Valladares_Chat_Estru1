@@ -13,7 +13,7 @@
 #include <QFont>
 
 SigninWindow::SigninWindow(Master* master, Login *ventanaLogin, QWidget *parent)
-    : QWidget(nullptr), loginVentana(ventanaLogin), master(master)  // Inicializar master
+    : QWidget(nullptr), master(master), loginVentana(ventanaLogin)
 {
     // Header Azul
     QFrame *headerFrame = new QFrame;
@@ -60,7 +60,9 @@ SigninWindow::SigninWindow(Master* master, Login *ventanaLogin, QWidget *parent)
 
     QLabel *labelAvatarText = new QLabel("Avatar:");
     labelAvatar = new QLabel("Ninguno seleccionado");
-    botonSeleccionarAvatar = new QPushButton("Seleccionar Imagen");
+    botonSeleccionarAvatar = new QPushButton("");
+    botonSeleccionarAvatar->setIcon(QIcon("Imagenes/imagen.png"));
+
     connect(botonSeleccionarAvatar, &QPushButton::clicked, this, &SigninWindow::seleccionarImagen);
 
     QHBoxLayout *avatarLayout = new QHBoxLayout;
@@ -108,7 +110,7 @@ SigninWindow::SigninWindow(Master* master, Login *ventanaLogin, QWidget *parent)
     // Conexiones
     connect(botonRegistrar, &QPushButton::clicked, this, &SigninWindow::registrarUsuario);
     connect(botonCancelar, &QPushButton::clicked, this, [=]() {
-        this->close();
+        ReturnLogin();
     });
 
     // FRAME izquierda Formulario
@@ -204,7 +206,7 @@ void SigninWindow::registrarUsuario()
     QString confirm = inputConfirmacion->text().trimmed();
     int edad = inputEdad->value();
     QString pregunta = comboPreguntas->currentText();
-    QString imagen = rutaImagenSeleccionada.isEmpty() ? "default_avatar.png" : rutaImagenSeleccionada;
+    QString imagen = rutaImagenSeleccionada.isEmpty() ? "Imagenes/profile-picture.png" : rutaImagenSeleccionada;
     QString respuesta = inputRespuesta->text().trimmed();
     int IsOn =1;
 
@@ -263,7 +265,6 @@ void SigninWindow::registrarUsuario()
     }
 
     try {
-        // Usar Master para el registro
         master->signIn(
             usuario,
             nombre,
@@ -283,10 +284,15 @@ void SigninWindow::registrarUsuario()
             throw std::runtime_error("Error en creación de archivos");
         }
 
+       // master->cargarUsuarios(); -- crashea antes con esto
         // Pasar Master a Chat
-        Chat *ventanaChat = new Chat(master);
-        ventanaChat->show();
-        this->close();
+        if(master->login(usuario, pass)) {
+            //meterlogin no arreglo
+            Chat *ventanaChat = new Chat(master);
+            ventanaChat->show();
+            this->close();
+        }
+
 
         QMessageBox::information(this, "Éxito", "Registro completado correctamente");
     }
@@ -298,7 +304,15 @@ void SigninWindow::registrarUsuario()
 
 void SigninWindow::closeEvent(QCloseEvent *event)
 {
-   // loginVentana->show();
-    //QWidget::closeEvent(event);
+   //loginVentana->show();
+    QWidget::closeEvent(event);
+}
+
+void SigninWindow::ReturnLogin()
+{
+    if (loginVentana) {
+        loginVentana->show();
+    }
+    this->close();
 }
 

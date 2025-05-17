@@ -78,15 +78,65 @@ void Master::cargarUsuarios() {
         QStringList parts = in.readLine().split(',');
         if (parts.size() >= 9) {
             Usuario* nuevo = new Usuario(
-                parts[0], parts[1], parts[2], parts[3],
-                parts[4].toInt(), parts[5],
-                parts[6], parts[7], parts[8].toInt(), false
+                parts[0], //Username
+                parts[1], //Nombre
+                parts[2], //Correo
+                parts[3], //Password
+                parts[4].toInt(), //Edad
+                parts[5], //Avatar
+                parts[6], // Pregunta
+                parts[7], // Respuesta
+                parts[8].toInt(), //0= Ofline 1 =Online
+                false
                 );
             todosLosUsuarios.append(nuevo);
         }
     }
     file.close();
 }
+
+
+
+/*
+void Master::cargarUsuarios() {
+    for (Usuario* u : todosLosUsuarios) {
+        delete u;
+    }
+    todosLosUsuarios.clear();
+
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QStringList parts = in.readLine().split(',');
+        if (parts.size() >= 9) {
+            Usuario* nuevo = new Usuario(
+                parts[0], parts[1], parts[2], parts[3],
+                parts[4].toInt(), parts[5],
+                parts[6], parts[7], parts[8].toInt(), false
+                );
+            todosLosUsuarios.append(nuevo);
+
+            // DEBUG: Mostrar los datos cargados
+            qDebug() << "-------Usuario------";
+            qDebug() << "Username:" << parts[0];
+            qDebug() << "Nombre:" << parts[1];
+            qDebug() << "Correo:" << parts[2];
+            qDebug() << "Password:" << parts[3];
+            qDebug() << "Edad" << parts[4].toInt();
+            qDebug() << "Avatar (ruta foto):" << parts[5];
+            qDebug() << "Pregunta" << parts[6];
+            qDebug() << "Respuesta" << parts[7];
+            qDebug() << "Activo:" << parts[8].toInt(); // 0= Ofline 1 =Online
+            qDebug() << "";
+        } else {
+            qDebug() << "Línea inválida o incompleta en allaccs.txt";
+        }
+    }
+    file.close();
+}
+*/
 
 // Login
 bool Master::login(const QString &username, const QString &password) {
@@ -106,7 +156,8 @@ void Master::signIn(const QString &username, const QString &nombre,
                     const QString &email, const QString &contra,
                     int edad, const QString &rutaImagen,
                     const QString &pregunta, const QString &respuesta) {
-    // Antes verificar si ya existe el username
+
+    //ver si ya Existe
     if (buscarUsuarioPorNombre(username) != nullptr) {
         QMessageBox::warning(nullptr, "Aviso", "El usuario ya existe.");
         return;
@@ -127,8 +178,6 @@ void Master::signIn(const QString &username, const QString &nombre,
         // Añadir a lista local para evitar recarga innecesaria
         todosLosUsuarios.append(currentUser.get());
 
-        // Guardar en archivo (opcional - implementar función para guardar usuarios)
-        // TODO: método para guardar usuarios en archivo
 
     } catch(const std::exception &e) {
         QMessageBox::critical(nullptr, "Error", e.what());
@@ -197,7 +246,7 @@ Usuario* Master::buscarUsuarioPorNombre(const QString &username) const {
     return nullptr;
 }
 
-// Filtrado usuarios por estado leyendo archivo de estados
+// Filtrado usuarios por estado leyendo archivo de estados -- AmigosManejo
 QList<Usuario*> Master::getUsersPorEstado(int estadoBuscado) const {
     QList<Usuario*> resultado;
     QString archivoEstados = getTXTEstados();
@@ -233,10 +282,95 @@ QList<Usuario*> Master::getUsersPorEstado(int estadoBuscado) const {
     return resultado;
 }
 
-QList<Usuario*> Master::getUsers0() const { return getUsersPorEstado(0); }
-QList<Usuario*> Master::getUsers1() const { return getUsersPorEstado(1); }
-QList<Usuario*> Master::getUsers2() const { return getUsersPorEstado(2); }
-QList<Usuario*> Master::getUsers3() const { return getUsersPorEstado(3); }
+QList<Usuario*> Master::getUsers0() const { return getUsersPorEstado(0); } //Get No Amigos
+QList<Usuario*> Master::getUsers1() const { return getUsersPorEstado(1); } //Get a Quienes Envie Soli
+QList<Usuario*> Master::getUsers2() const { return getUsersPorEstado(2); } //Get Quienes me enviaron Soli
+QList<Usuario*> Master::getUsers3() const { return getUsersPorEstado(3); } //Get Amigos
+
+
+
+/*
+QQList<Usuario*> Master::cargarAmigos() {
+    cargarUsuarios(); // Aseguramos que todosLosUsuarios está actualizado
+
+    QList<QString> amigosUsernames = getUsernamesPorEstado(3); // Solo los usernames con estado 3
+    QList<Usuario*> listaCompletaDeAmigos;
+
+    for (const QString& usernameAmigo : amigosUsernames) {
+        for (Usuario* usuarioCompleto : todosLosUsuarios) {
+            if (usuarioCompleto->getUsername() == usernameAmigo) {
+                listaCompletaDeAmigos.append(usuarioCompleto);
+                break;
+            }
+        }
+    }
+
+    return listaCompletaDeAmigos;
+}
+}
+*/
+
+QList<QString> Master::getUsernamesPorEstado(int estadoBuscado) const {
+    QList<QString> resultado;
+    QString archivoEstados = getTXTEstados();
+
+    QFile file(archivoEstados);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return resultado;
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList partes = linea.split(',');
+
+        if (partes.size() != 2) continue;
+
+        QString username = partes[0].trimmed();
+        QString estadoStr = partes[1].trimmed();
+
+        bool ok;
+        int estado = estadoStr.toInt(&ok);
+        if (!ok) continue;
+
+        if (estado == estadoBuscado) {
+            resultado.append(username);
+        }
+    }
+
+    file.close();
+    return resultado;
+}
+
+QList<Usuario*> Master::cargarAmigos() {
+    cargarUsuarios(); // Asegura que todosLosUsuarios está actualizado
+
+    QList<QString> amigosUsernames = getUsernamesPorEstado(3);
+    QList<Usuario*> listaCompletaDeAmigos;
+
+   // qDebug() << "Usernames encontrados con estado 3:" << amigosUsernames;
+    //qDebug() << "Cantidad total de usuarios cargados:" << todosLosUsuarios.size();
+
+    for (const QString& usernameAmigo : amigosUsernames) {
+        bool encontrado = false;
+        for (Usuario* usuarioCompleto : todosLosUsuarios) {
+            if (usuarioCompleto->getUsername() == usernameAmigo) {
+                listaCompletaDeAmigos.append(usuarioCompleto);
+                //qDebug() << "Amigo agregado:" << usernameAmigo;
+                //qDebug() <<usuarioCompleto->getNombreCompleto();
+                encontrado = true;
+                break;
+            }
+        }
+        if (!encontrado) {
+            qDebug() << "Usuario no encontrado en todosLosUsuarios:" << usernameAmigo;
+        }
+    }
+
+    //qDebug() << "Total amigos agregados:" << listaCompletaDeAmigos.size();
+    return listaCompletaDeAmigos;
+}
+
 
 
 

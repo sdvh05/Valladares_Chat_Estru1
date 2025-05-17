@@ -26,6 +26,9 @@ private slots:
     void seleccionarImagen();
     void registrarUsuario();
 
+public:
+    void ReturnLogin();
+
 private:
     Master* master;
 
@@ -48,6 +51,8 @@ private:
 
     Login *loginVentana;
 };
+
+
 
 #endif // SIGNIN_H
 

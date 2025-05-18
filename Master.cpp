@@ -5,7 +5,7 @@ Master::Master() {
     cargarUsuarios();
 }
 
-// Destructor - liberar memoria de usuarios
+// Destructor
 Master::~Master() {
     for (Usuario* u : todosLosUsuarios) {
         delete u;
@@ -369,6 +369,57 @@ QList<Usuario*> Master::cargarAmigos() {
 
     //qDebug() << "Total amigos agregados:" << listaCompletaDeAmigos.size();
     return listaCompletaDeAmigos;
+}
+
+
+
+//CAMBIOS
+//----------------------------------------------------------------------------------------------------------------------------------------
+bool Master::cambiarContrasena(const QString& username, const QString& pregunta, const QString& respuesta, const QString& nuevaContrasena) {
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return false;
+
+    QStringList lineas;
+    QTextStream in(&file);
+    bool actualizado = false;
+
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList parts = linea.split(',');
+
+        if (parts.size() >= 9 && parts[0] == username && parts[6] == pregunta && parts[7] == respuesta) {
+            // Validar que la nueva contraseña sea diferente
+            if (parts[3] == nuevaContrasena) {
+                QMessageBox::warning(nullptr, "Error", "La nueva contraseña no puede ser igual a la anterior.");
+                file.close();
+                return false;
+            }
+
+            parts[3] = nuevaContrasena; // Cambiar solo la contraseña
+            linea = parts.join(",");
+            actualizado = true;
+        }
+
+        lineas << linea;
+    }
+
+    file.close();
+
+    if (actualizado) {
+        QFile outFile("allaccs.txt");
+        if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return false;
+
+        QTextStream out(&outFile);
+        for (const QString& l : lineas) {
+            out << l << "\n";
+        }
+
+        outFile.close();
+        return true;
+    }
+
+    QMessageBox::warning(nullptr, "Error", "Usuario o datos de seguridad incorrectos.");
+    return false;
 }
 
 

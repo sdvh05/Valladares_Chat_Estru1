@@ -10,7 +10,7 @@
 #include <QComboBox>
 #include <QSpinBox>
 
-class Login; // Para usar puntero
+class Login;
 
 class SigninWindow : public QWidget
 {

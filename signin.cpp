@@ -285,7 +285,6 @@ void SigninWindow::registrarUsuario()
         }
 
        // master->cargarUsuarios(); -- crashea antes con esto
-        // Pasar Master a Chat
         if(master->login(usuario, pass)) {
             //meterlogin no arreglo
             Chat *ventanaChat = new Chat(master);

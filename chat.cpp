@@ -1,4 +1,4 @@
-#include "Chat.h"
+#include "chat.h"
 #include "amigosmanejo.h"
 #include "login.h"
 
@@ -8,6 +8,7 @@
 #include <QListWidgetItem>
 #include <QPixmap>
 #include <QDebug>
+#include <QScrollBar>
 
 Chat::Chat(Master* master, QWidget *parent)
     : QWidget(parent), master(master) {
@@ -22,7 +23,7 @@ void Chat::setLoginVentana(QWidget *ventana) {
 }
 
 void Chat::crearLayout() {
-    // ========== PANEL DE PERFIL ========== //
+    // PANEL DE PERFIL
     QVBoxLayout *layoutPerfil = new QVBoxLayout;
     Usuario* actual = master->getUsuarioActual();
 
@@ -31,12 +32,6 @@ void Chat::crearLayout() {
     lblAvatar->setScaledContents(true);
     lblAvatar->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     lblAvatar->setPixmap(QPixmap(actual->getAvatar()));
-    qDebug() << actual->getAvatar();
-    qDebug() << master->getAvatar();
-
-    QString ruta = actual->getAvatar();
-    qDebug() << "Ruta:" << ruta;
-    qDebug() << "¿Existe el archivo?" << QFile::exists(ruta); //No Existe mis fotos, por el problema del Backup
 
     lblNombre = new QLabel(actual->getNombreCompleto());
     lblNombre->setAlignment(Qt::AlignCenter);
@@ -56,7 +51,7 @@ void Chat::crearLayout() {
     layoutPerfil->addWidget(lblUser);
     layoutPerfil->addSpacing(10);
 
-    // ========== PANEL DE OPCIONES (BOTONES) ========== //
+    // BOTONES
     QVBoxLayout *layoutBotones = new QVBoxLayout;
     lblTituloConfig = new QLabel("Opciones");
     btnAgregar = new QPushButton("Agregar Contacto");
@@ -73,13 +68,12 @@ void Chat::crearLayout() {
     layoutBotones->addWidget(btnCerrarSesion);
     layoutBotones->addStretch();
 
-    // ========== AGRUPAR PERFIL + BOTONES ========== //
+    // PANEL IZQUIERDO
     QVBoxLayout *panelIzquierdo = new QVBoxLayout;
     panelIzquierdo->addLayout(layoutPerfil);
     panelIzquierdo->addLayout(layoutBotones);
     panelIzquierdo->addStretch();
 
-    //Abrir Frame Gestion de Amigos
     connect(btnAgregar, &QPushButton::clicked, this, [this]() {
         AmigosManejo* ventanaAmigos = new AmigosManejo(master, this);
         ventanaAmigos->setAttribute(Qt::WA_DeleteOnClose);
@@ -88,20 +82,30 @@ void Chat::crearLayout() {
         ventanaAmigos->show();
     });
 
-    // Conexión para cerrar sesión
     connect(btnCerrarSesion, &QPushButton::clicked, this, [this]() {
         LoginLogout();
     });
 
-    // ========== PANEL CENTRAL - Lista de contactos ========== //
+    connect(btnEliminar, &QPushButton::clicked, this, [this]() {
+        Eliminar(listaContactos->currentItem());
+    });
+    connect(btnStickers, &QPushButton::clicked, this, &Chat::mostrarStickersPopup);
+
+
+    // LISTA DE CONTACTOS
     listaContactos = new QListWidget;
     connect(listaContactos, &QListWidget::itemClicked, this, &Chat::seleccionarContacto);
 
-    // ========== PANEL DERECHO - Chat ========== //
+    // PANEL DE CHAT
     QVBoxLayout *layoutChat = new QVBoxLayout;
     lblNombreContacto = new QLabel("Selecciona un contacto");
-    chatArea = new QTextEdit;
-    chatArea->setReadOnly(true);
+
+    chatScrollArea = new QScrollArea;
+    chatContainer = new QWidget;
+    chatLayout = new QVBoxLayout(chatContainer);
+    chatLayout->setAlignment(Qt::AlignTop);
+    chatScrollArea->setWidgetResizable(true);
+    chatScrollArea->setWidget(chatContainer);
 
     inputMensaje = new QLineEdit;
     btnEnviar = new QPushButton("Enviar");
@@ -111,12 +115,12 @@ void Chat::crearLayout() {
     connect(btnDeshacer, &QPushButton::clicked, this, &Chat::deshacerMensaje);
 
     layoutChat->addWidget(lblNombreContacto);
-    layoutChat->addWidget(chatArea);
+    layoutChat->addWidget(chatScrollArea);
     layoutChat->addWidget(inputMensaje);
     layoutChat->addWidget(btnEnviar);
     layoutChat->addWidget(btnDeshacer);
 
-    // ========== LAYOUT PRINCIPAL ========== //
+    // LAYOUT PRINCIPAL
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->addLayout(panelIzquierdo, 2);
     mainLayout->addWidget(listaContactos, 2);
@@ -127,24 +131,22 @@ void Chat::crearLayout() {
     resize(900, 600);
 }
 
+//--------------------------------------------------------------------------------------------
 void Chat::mostrarContactosConAvatares() {
-    listaContactos->clear();  // Limpiar antes de agregar
+    listaContactos->clear();
 
     QList<Usuario*> amigos = master->cargarAmigos();
 
     for (Usuario* amigo : amigos) {
-        // Crear widget para mostrar en el QListWidget
         QWidget* itemWidget = new QWidget;
         QHBoxLayout* layout = new QHBoxLayout(itemWidget);
         layout->setContentsMargins(5, 5, 5, 5);
 
-        // Imagen de perfil
         QLabel* avatarLabel = new QLabel;
         avatarLabel->setFixedSize(40, 40);
         avatarLabel->setPixmap(QPixmap(amigo->getAvatar()).scaled(40, 40, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         avatarLabel->setScaledContents(true);
 
-        // Información textual
         QVBoxLayout* infoLayout = new QVBoxLayout;
         QLabel* lblUsername = new QLabel("@" + amigo->getUsername());
         QLabel* lblEstado = new QLabel(amigo->isOnline() ? "Online" : "Offline");
@@ -156,11 +158,8 @@ void Chat::mostrarContactosConAvatares() {
         layout->addWidget(avatarLabel);
         layout->addLayout(infoLayout);
 
-        // Crear QListWidgetItem para contener el widget
         QListWidgetItem* item = new QListWidgetItem(listaContactos);
         item->setSizeHint(itemWidget->sizeHint());
-
-        // Guardar el username en el item (para obtenerlo al seleccionar)
         item->setData(Qt::UserRole, amigo->getUsername());
 
         listaContactos->addItem(item);
@@ -168,17 +167,142 @@ void Chat::mostrarContactosConAvatares() {
     }
 }
 
-void Chat::LoginLogout() {
-    master->logout();
-    Login *ventanaLogin = new Login();
-    ventanaLogin->show();
-    this->close();
+void Chat::mostrarStickersPopup() {
+    if (contactoActual.isEmpty()) {
+        QMessageBox::warning(this, "Selecciona un contacto", "Debes seleccionar un contacto antes de enviar un sticker.");
+        return;
+    }
+
+    QDialog* dialogo = new QDialog(this);
+    dialogo->setWindowTitle("Selecciona un sticker");
+    dialogo->setModal(true);
+
+    QVBoxLayout* layout = new QVBoxLayout(dialogo);
+    QGridLayout* grid = new QGridLayout;
+
+    QStringList rutas = {
+        "Stickers/StitchGum.jpeg",
+        "Stickers/CoffeeCode.png",
+        "Stickers/buen-trabajo.png",
+        "Stickers/logro.png"
+    };
+
+    for (int i = 0; i < rutas.size(); ++i) {
+        QString ruta = rutas[i];
+        QPushButton* botonSticker = new QPushButton;
+        botonSticker->setIcon(QIcon(ruta));
+        botonSticker->setIconSize(QSize(100, 100));
+        botonSticker->setFixedSize(110, 110);
+        botonSticker->setStyleSheet("border: none;");
+
+        connect(botonSticker, &QPushButton::clicked, this, [this, ruta, dialogo]() {
+            QString linea = master->getUsername() + ": STICKER," + ruta;
+
+            // Guardar en el archivo del chat
+            QFile archivo(rutaArchivoChatActual);
+            if (archivo.open(QIODevice::Append | QIODevice::Text)) {
+                QTextStream out(&archivo);
+                out << linea << "\n";
+                archivo.close();
+            }
+
+            // Recargar chat para mostrarlo actualizado
+            seleccionarContacto(listaContactos->currentItem());
+
+            dialogo->accept();
+        });
+
+        grid->addWidget(botonSticker, i / 2, i % 2);  // 2 columnas
+    }
+
+    layout->addLayout(grid);
+    dialogo->setLayout(layout);
+    dialogo->exec();
 }
 
-void Chat::agregarContacto(const QString &nombre, const QString &estado) {
-    QListWidgetItem *item = new QListWidgetItem(nombre + " (" + estado + ")");
-    listaContactos->addItem(item);
+//--------------------------------------------------------------------------------------------
+void Chat::LoginLogout() {
+    QMessageBox::StandardButton confirmacion;
+    confirmacion = QMessageBox::question(this, "Cerrar sesión", "¿Estás seguro de que quieres cerrar sesión?", QMessageBox::Yes | QMessageBox::No);
+
+    if (confirmacion == QMessageBox::Yes) {
+        master->logout();
+        Login *ventanaLogin = new Login();
+        ventanaLogin->show();
+        this->close();
+    }
 }
+
+void Chat::Eliminar(QListWidgetItem *item) {
+    if (!item) {
+        QMessageBox::warning(this, "Error", "Selecciona un contacto para eliminar.");
+        return;
+    }
+
+    QString usernameEliminar = item->data(Qt::UserRole).toString();
+
+    QMessageBox::StandardButton confirmacion = QMessageBox::question(
+        this,
+        "Eliminar contacto",
+        "¿Estás seguro de eliminar a @" + usernameEliminar + " de tus contactos?",
+        QMessageBox::Yes | QMessageBox::No
+        );
+
+    if (confirmacion == QMessageBox::Yes) {
+        Usuario* usuarioActual = master->getUsuarioActual();
+        usuarioActual->EliminarAmigo(usernameEliminar);
+        delete listaContactos->takeItem(listaContactos->row(item));
+        lblNombreContacto->setText("Selecciona un contacto");
+    }
+}
+
+void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
+    QWidget* mensajeWidget = new QWidget;
+    QHBoxLayout* layout = new QHBoxLayout(mensajeWidget);
+
+    QLabel* label = new QLabel;
+    label->setWordWrap(true);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+    // Detectar si es un sticker
+    if (mensaje.startsWith("STICKER,")) {
+        QString rutaSticker = mensaje.mid(QString("STICKER,").length());
+        QPixmap pix(rutaSticker);
+        if (!pix.isNull()) {
+            label->setPixmap(pix.scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            label->setFixedSize(130, 130);
+        } else {
+            label->setText("[Sticker no encontrado]");
+        }
+    } else {
+        // Mensaje de texto normal
+        label->setText(mensaje);
+        label->setStyleSheet(QString(
+                                 "background-color: %1; color: %2; padding: 8px; border-radius: 10px;"
+                                 ).arg(
+                                     esPropio ? "#cce5ff" : "#e0e0e0"  // Fondo azul/gris
+                                     ).arg(
+                                     "#000000"  // Texto negro
+                                     ));
+    }
+
+    if (esPropio) {
+        layout->addStretch();
+        layout->addWidget(label);
+    } else {
+        layout->addWidget(label);
+        layout->addStretch();
+    }
+
+    layout->setContentsMargins(10, 5, 10, 5);
+    chatLayout->addWidget(mensajeWidget);
+
+    // Desplazar hacia abajo automáticamente
+    QTimer::singleShot(0, [this]() {
+        chatScrollArea->verticalScrollBar()->setValue(chatScrollArea->verticalScrollBar()->maximum());
+    });
+}
+
 
 void Chat::seleccionarContacto(QListWidgetItem *item) {
     contactoActual = item->data(Qt::UserRole).toString();
@@ -187,41 +311,52 @@ void Chat::seleccionarContacto(QListWidgetItem *item) {
     QString user1 = master->getUsername();
     QString user2 = contactoActual;
 
-    QString archivo1 = "Chats/"+user1 + "-" + user2 + ".txt";
-    QString archivo2 = "Chats/"+user2 + "-" + user1 + ".txt";
+    QString archivo1 = "Chats/" + user1 + "-" + user2 + ".txt";
+    QString archivo2 = "Chats/" + user2 + "-" + user1 + ".txt";
 
     if (QFile::exists(archivo1)) {
         rutaArchivoChatActual = archivo1;
     } else if (QFile::exists(archivo2)) {
         rutaArchivoChatActual = archivo2;
     } else {
-        // Si ninguno existe, creamos uno nuevo
         rutaArchivoChatActual = archivo1;
         QFile nuevoArchivo(rutaArchivoChatActual);
-        nuevoArchivo.open(QIODevice::WriteOnly);  // lo crea vacío
+        nuevoArchivo.open(QIODevice::WriteOnly);
         nuevoArchivo.close();
     }
 
-    // Leer el contenido del archivo
     QFile archivo(rutaArchivoChatActual);
     if (archivo.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&archivo);
-        chatArea->clear();
+
+        // Limpiar mensajes anteriores
+        QLayoutItem* item;
+        while ((item = chatLayout->takeAt(0)) != nullptr) {
+            delete item->widget();
+            delete item;
+        }
+
         while (!in.atEnd()) {
             QString linea = in.readLine();
-            chatArea->append(linea);
+            QStringList partes = linea.split(": ");
+            if (partes.size() >= 2) {
+                QString autor = partes[0];
+                QString contenido = partes.mid(1).join(": ");
+                bool esPropio = (autor == master->getUsername());
+                agregarMensajeWidget(contenido, esPropio);
+            } else {
+                agregarMensajeWidget(linea, false);
+            }
         }
         archivo.close();
     }
 }
-
 
 void Chat::enviarMensaje() {
     QString mensaje = inputMensaje->text().trimmed();
     if (!mensaje.isEmpty() && !rutaArchivoChatActual.isEmpty()) {
         QString linea = master->getUsername() + ": " + mensaje;
 
-        // Escribir en archivo
         QFile archivo(rutaArchivoChatActual);
         if (archivo.open(QIODevice::Append | QIODevice::Text)) {
             QTextStream out(&archivo);
@@ -231,23 +366,13 @@ void Chat::enviarMensaje() {
 
         pilaMensajes.push(mensaje);
         inputMensaje->clear();
-
-        // Refrescar chatArea
-        QFile archivoLectura(rutaArchivoChatActual);
-        if (archivoLectura.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&archivoLectura);
-            chatArea->clear();
-            while (!in.atEnd()) {
-                chatArea->append(in.readLine());
-            }
-            archivoLectura.close();
-        }
+        agregarMensajeWidget(mensaje, true);
     }
 }
 
 void Chat::deshacerMensaje() {
     if (!pilaMensajes.isEmpty()) {
         QString ultimo = pilaMensajes.pop();
-        chatArea->append("[Mensaje eliminado: \"" + ultimo + "\"]");
+        agregarMensajeWidget("[Mensaje eliminado: \"" + ultimo + "\"]", true);
     }
 }

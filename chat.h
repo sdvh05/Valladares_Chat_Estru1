@@ -8,16 +8,14 @@
 #include <QWidget>
 #include <QPushButton>
 #include <QListWidget>
-#include <QTextEdit>
 #include <QLineEdit>
 #include <QLabel>
 #include <QString>
-
-#include <QTimer>
-
-//Pilas Y colas, eliminar al crear las propias
+#include <QScrollArea>
+#include <QVBoxLayout>
 #include <QStack>
 #include <QQueue>
+#include <QTimer>
 
 class Login;
 class SignIn;
@@ -30,10 +28,10 @@ public:
 
     void setLoginVentana(QWidget *ventana);
     void LoginLogout();
+    void Eliminar(QListWidgetItem *item);
 
     QString rutaArchivoChatActual;
     QString contactoActual;
-
 
 private slots:
     void enviarMensaje();
@@ -58,27 +56,29 @@ private:
 
     // Panel de chat
     QLabel *lblNombreContacto;
-    QTextEdit *chatArea;
     QLineEdit *inputMensaje;
     QPushButton *btnEnviar;
     QPushButton *btnDeshacer;
 
-    // Almacenar último mensaje (para "deshacer")
-    QStack<QString> pilaMensajes;
-
-    // Cola para mensajes no leídos
-    QQueue<QString> colaMensajesNoLeidos;
-
-    //Mini Mi Perfil
+    // Panel de perfil
     QLabel *lblAvatar;
     QLabel *lblNombre;
     QLabel *lblUser;
 
+    // Área de mensajes estilo burbujas
+    QScrollArea *chatScrollArea;
+    QWidget *chatContainer;
+    QVBoxLayout *chatLayout;
+
+    // Pilas y colas
+    QStack<QString> pilaMensajes;
+    QQueue<QString> colaMensajesNoLeidos;
+
+    // Métodos auxiliares
     void crearLayout();
-    void agregarContacto(const QString &nombre, const QString &estado);
     void mostrarContactosConAvatares();
-
-
+    void agregarMensajeWidget(const QString& mensaje, bool esPropio);
+    void mostrarStickersPopup();
 
 };
 

@@ -7,6 +7,8 @@
 #include <QFrame>
 #include <QFont>
 #include <QIcon>
+#include <QInputDialog>
+
 
 RecuperarPass::RecuperarPass(QWidget *parent)
     : QWidget(parent)
@@ -128,8 +130,28 @@ void RecuperarPass::verificarRespuesta()
         return;
     }
 
-    // Simulación de recuperación (reemplazar con lectura de archivo)
-    QMessageBox::information(this, "Recuperación exitosa", "Tu contraseña es: ");
+    // Solicita nueva contraseña
+    bool ok;
+    QString nuevaContrasena = QInputDialog::getText(this, "Nueva contraseña",
+                                                    "Ingresa tu nueva contraseña:",
+                                                    QLineEdit::Password,
+                                                    "", &ok);
+    if (!ok || nuevaContrasena.isEmpty()) {
+        QMessageBox::information(this, "Cancelado", "No se cambió la contraseña.");
+        return;
+    }
+
+    if (nuevaContrasena.length() < 4) {
+        QMessageBox::warning(this, "Contraseña inválida", "La nueva contraseña debe tener al menos 4 caracteres.");
+        return;
+    }
+
+    if (Master::cambiarContrasena(usuario, preguntaSeleccionada, respuestaIngresada, nuevaContrasena)) {
+        QMessageBox::information(this, "Éxito", "Contraseña actualizada correctamente.");
+        this->cerrarVentana();
+    } else {
+        QMessageBox::critical(this, "Error", "No se pudo actualizar la contraseña.\nVerifica que la información sea correcta y que la nueva contraseña sea distinta.");
+    }
 }
 
 void RecuperarPass::cerrarVentana()

@@ -29,7 +29,7 @@ public:
     Master();
     ~Master();
 
-    // Login y creación de usuario
+    // Login, SignIn, Logout
     bool login(const QString &username, const QString &password);
     void signIn(const QString &username, const QString &nombre,
                 const QString &email, const QString &contra,
@@ -65,6 +65,9 @@ public:
 
     QList<QString> getUsernamesPorEstado(int estado) const;
     QList<Usuario*> cargarAmigos();
+
+    //Cambios
+    static bool cambiarContrasena(const QString& username, const QString& pregunta, const QString& respuesta, const QString& nuevaContrasena);
 };
 
 #endif // MASTER_H

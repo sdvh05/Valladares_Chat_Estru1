@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <Master.h>
 
 class RecuperarPass : public QWidget
 {

@@ -10,8 +10,10 @@
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <QComboBox>
-#include <QStack>
 #include <QTimer>
+
+//prueba
+#include <QStack>
 
 #include "master.h"
 
@@ -39,6 +41,7 @@ private:
     void mostrarContactosConAvatares(const QList<Usuario*>& amigos);
     void agregarMensajeWidget(const QString& mensaje, bool esPropio);
     int obtenerCantidadNotis(const QString& usuario);
+    void mostrarOpcionesConfiguracion();
 
     // Punteros a objetos
     Master* master;

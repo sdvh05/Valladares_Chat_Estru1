@@ -315,7 +315,8 @@ QList<Usuario*> Master::cargarAmigos() {
     return listaCompletaDeAmigos;
 }
 
-////ORDENAMIENTO
+//ORDENAMIENTO
+//-------------------------------------------------
 QList<Usuario*> Master::CargarAmigosAlfabetico() {
     QList<Usuario*> amigos = cargarAmigos();
     int n = amigos.size();
@@ -396,7 +397,7 @@ QList<Usuario*> Master::CargarAmigosLength() {
 
 
 
-//CAMBIOS
+//CAMBIOS - SETTERS
 //----------------------------------------------------------------------------------------------------------------------------------------
 bool Master::cambiarContrasena(const QString& username, const QString& pregunta, const QString& respuesta, const QString& nuevaContrasena) {
     QFile file("allaccs.txt");
@@ -444,6 +445,152 @@ bool Master::cambiarContrasena(const QString& username, const QString& pregunta,
     QMessageBox::warning(nullptr, "Error", "Usuario o datos de seguridad incorrectos.");
     return false;
 }
+
+void Master::actualizarLineaUsuario(const QStringList& nuevaLinea) {
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QStringList lineas;
+    QTextStream in(&file);
+    QString usernameActual = getUsername();
+
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList parts = linea.split(',');
+        if (parts.size() >= 9 && parts[0] == usernameActual) {
+            lineas << nuevaLinea.join(',');
+        } else {
+            lineas << linea;
+        }
+    }
+    file.close();
+
+    QFile outFile("allaccs.txt");
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return;
+    QTextStream out(&outFile);
+    for (const QString& l : lineas) {
+        out << l << "\n";
+    }
+    outFile.close();
+}
+
+
+void Master::cambiarNombre(const QString &nuevoNombre) {
+    QString username = getUsername();
+    if (username.isEmpty()) return;
+
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QStringList lineas;
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList parts = linea.split(',');
+        if (parts.size() >= 9 && parts[0] == username && parts[1] != nuevoNombre) {
+            parts[1] = nuevoNombre;
+            linea = parts.join(',');
+        }
+        lineas << linea;
+    }
+    file.close();
+
+    QFile outFile("allaccs.txt");
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return;
+
+    QTextStream out(&outFile);
+    for (const QString &l : lineas) out << l << "\n";
+    outFile.close();
+}
+
+
+void Master::cambiarEmail(const QString &nuevoEmail) {
+    QString username = getUsername();
+    if (username.isEmpty()) return;
+
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QStringList lineas;
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList parts = linea.split(',');
+        if (parts.size() >= 9 && parts[0] == username && parts[2] != nuevoEmail) {
+            parts[2] = nuevoEmail;
+            linea = parts.join(',');
+        }
+        lineas << linea;
+    }
+    file.close();
+
+    QFile outFile("allaccs.txt");
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return;
+
+    QTextStream out(&outFile);
+    for (const QString &l : lineas) out << l << "\n";
+    outFile.close();
+}
+
+
+void Master::cambiarEdad(int nuevaEdad) {
+    QString username = getUsername();
+    if (username.isEmpty()) return;
+
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QStringList lineas;
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList parts = linea.split(',');
+        if (parts.size() >= 9 && parts[0] == username && parts[4].toInt() != nuevaEdad) {
+            parts[4] = QString::number(nuevaEdad);
+            linea = parts.join(',');
+        }
+        lineas << linea;
+    }
+    file.close();
+
+    QFile outFile("allaccs.txt");
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return;
+
+    QTextStream out(&outFile);
+    for (const QString &l : lineas) out << l << "\n";
+    outFile.close();
+}
+
+
+void Master::cambiarAvatar(const QString &nuevoAvatar) {
+    QString username = getUsername();
+    if (username.isEmpty()) return;
+
+    QFile file("allaccs.txt");
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QStringList lineas;
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString linea = in.readLine();
+        QStringList parts = linea.split(',');
+        if (parts.size() >= 9 && parts[0] == username && parts[5] != nuevoAvatar) {
+            parts[5] = nuevoAvatar;
+            linea = parts.join(',');
+        }
+        lineas << linea;
+    }
+    file.close();
+
+    QFile outFile("allaccs.txt");
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return;
+
+    QTextStream out(&outFile);
+    for (const QString &l : lineas) out << l << "\n";
+    outFile.close();
+}
+
+
 
 //NOTIFICACIONES
 //--------------------------------------------------------------------------------------------------------------

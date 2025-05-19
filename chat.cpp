@@ -13,6 +13,9 @@
 #include <QTimer>
 #include <QFile>
 #include <QTextStream>
+#include <QInputDialog>
+#include <QFileDialog>
+#include <QMessageBox>
 
 // Constructor
 Chat::Chat(Master* master, QWidget *parent)
@@ -134,6 +137,8 @@ void Chat::crearLayout() {
 
     connect(btnEnviar, &QPushButton::clicked, this, &Chat::enviarMensaje);
     connect(btnDeshacer, &QPushButton::clicked, this, &Chat::deshacerMensaje);
+    connect(btnConfig, &QPushButton::clicked, this, &Chat::mostrarOpcionesConfiguracion);
+
 
     layoutChat->addWidget(lblNombreContacto);
     layoutChat->addWidget(chatScrollArea);
@@ -337,8 +342,18 @@ void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
         }
     } else {
         label->setText(mensaje);
-        label->setStyleSheet(QString("background-color: %1; color: %2; padding: 8px; border-radius: 10px;")
-                                 .arg(esPropio ? "#cce5ff" : "#e0e0e0").arg("#000000"));
+
+        QString colorFondo = esPropio ? "#cce5ff" : "#e0e0e0";
+        QString colorTexto = "#000000";
+        QString estilo = "padding: 8px; border-radius: 10px;";
+
+        // Verificar si es un mensaje eliminado
+        if (mensaje.trimmed() == "🗑️ Eliminaste este Mensaje") {
+            estilo += " font-style: italic;";
+        }
+
+        label->setStyleSheet(QString("background-color: %1; color: %2; %3")
+                                 .arg(colorFondo).arg(colorTexto).arg(estilo));
     }
 
     if (esPropio) {
@@ -356,6 +371,7 @@ void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
         chatScrollArea->verticalScrollBar()->setValue(chatScrollArea->verticalScrollBar()->maximum());
     });
 }
+
 
 void Chat::seleccionarContacto(QListWidgetItem *item) {
     if (!item) return;
@@ -434,11 +450,65 @@ void Chat::enviarMensaje() {
 }
 
 void Chat::deshacerMensaje() {
-    if (!pilaMensajes.isEmpty()) {
-        QString ultimo = pilaMensajes.pop();
-        agregarMensajeWidget("[Mensaje eliminado: \"" + ultimo + "\"]", true);
+    if (rutaArchivoChatActual.isEmpty()) return;
+
+    QFile archivo(rutaArchivoChatActual);
+    if (!archivo.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+    QTextStream in(&archivo);
+    QStringList lineas;
+    while (!in.atEnd()) {
+        lineas << in.readLine();
+    }
+    archivo.close();
+
+    QString usuario = master->getUsername();
+    QString marcadorEliminado = usuario + ": 🗑️ Eliminaste este Mensaje";
+
+    int indexAEliminar = -1;
+    QString contenidoOriginal;
+
+    for (int i = lineas.size() - 1; i >= 0; --i) {
+        QString linea = lineas[i];
+
+        if (linea.startsWith(usuario + ":")) {
+            if (linea.trimmed() == marcadorEliminado) {
+                continue;
+            } else {
+                indexAEliminar = i;
+                contenidoOriginal = linea.section(": ", 1);
+                break;
+            }
+        }
+    }
+
+    if (indexAEliminar != -1) {
+        QMessageBox::StandardButton respuesta = QMessageBox::question(
+            this,
+            "Deshacer último mensaje",
+            "¿Estás seguro que quieres eliminar tu último mensaje?\n\n\"" + contenidoOriginal + "\"",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (respuesta == QMessageBox::Yes) {
+            // Reemplazar línea
+            lineas[indexAEliminar] = marcadorEliminado;
+
+            if (archivo.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+                QTextStream out(&archivo);
+                for (const QString& linea : lineas) {
+                    out << linea << "\n";
+                }
+                archivo.close();
+                seleccionarContacto(listaContactos->currentItem()); // Recargar chat visualmente
+            }
+        }
+    } else {
+        QMessageBox::information(this, "Deshacer", "No hay mensajes recientes tuyos para eliminar.");
     }
 }
+
+
 
 int Chat::obtenerCantidadNotis(const QString& usuario) {
     QString ruta = QString("Notificacion/%1.txt").arg(master->getUsername());
@@ -463,13 +533,9 @@ int Chat::obtenerCantidadNotis(const QString& usuario) {
 void Chat::refrescarPeriodicamente() {
     QString contactoAnterior = contactoActual;
 
-    //Refrescar con el Index de lo que tenga seleccionado en Combo Ordenamiento
-    //Similar a la logica de void ordenarContactos(int index)... el switch
-    //Es importante mantener el ordenamietno de los archivos al tener seleccionado ya sea default, A-Z, Length
-    //Al refrescar no volver a default, sino antes de mostrar las cosas cargamos el ordenamiento, y mantenemos el index seleccionado
+
     int index=comboOrdenamiento->currentIndex();
     ordenarContactos(index);
-     //Esta solucion no me funciono, ocupo no perder el ordenamiento a la hora de refrescar mi lista de contatos
 
 
 
@@ -479,6 +545,73 @@ void Chat::refrescarPeriodicamente() {
             listaContactos->setCurrentItem(item);
             seleccionarContacto(item);
             break;
+        }
+    }
+}
+
+void Chat::mostrarOpcionesConfiguracion() {
+    QStringList opciones = {"Cambiar Nombre", "Cambiar Edad", "Cambiar Email", "Cambiar Avatar"};
+    bool ok;
+    QString opcionSeleccionada = QInputDialog::getItem(this, "Configuración de Usuario","Selecciona una opción:", opciones, 0, false, &ok);
+    if (!ok || opcionSeleccionada.isEmpty()) return;
+
+    Usuario* actual = master->getUsuarioActual();
+
+    if (opcionSeleccionada == "Cambiar Nombre") {
+        QString nuevoNombre = QInputDialog::getText(this, "Cambiar Nombre","Ingresa tu nuevo nombre:", QLineEdit::Normal,actual->getNombreCompleto(), &ok);
+        if (ok && !nuevoNombre.trimmed().isEmpty()) {
+            auto confirmacion = QMessageBox::question(this, "Confirmar cambio","¿Deseas cambiar tu nombre a:\n\"" + nuevoNombre + "\"?",QMessageBox::Yes | QMessageBox::No);
+            if (confirmacion == QMessageBox::Yes) {
+
+                master->cambiarNombre(nuevoNombre.trimmed());
+                lblNombre->setText(nuevoNombre.trimmed());
+            }
+        } else if (ok) {
+            QMessageBox::warning(this, "Error", "El nombre no puede estar vacío.");
+        }
+
+    } else if (opcionSeleccionada == "Cambiar Edad") {
+        QString nuevaEdadStr = QInputDialog::getText(this, "Cambiar Edad","Ingresa tu nueva edad:", QLineEdit::Normal,QString::number(actual->getEdad()), &ok);
+        if (ok && !nuevaEdadStr.trimmed().isEmpty()) {
+            bool esNumero;
+            int nuevaEdad = nuevaEdadStr.toInt(&esNumero);
+            if (!esNumero || nuevaEdad <= 0) {
+                QMessageBox::warning(this, "Error", "La edad debe ser un número válido.");
+                return;
+            }
+
+            auto confirmacion = QMessageBox::question(this, "Confirmar cambio","¿Deseas cambiar tu edad a:\n" + QString::number(nuevaEdad) + "?",QMessageBox::Yes | QMessageBox::No);
+            if (confirmacion == QMessageBox::Yes) {
+                master->cambiarEdad(nuevaEdad);
+            }
+        } else if (ok) {
+            QMessageBox::warning(this, "Error", "La edad no puede estar vacía.");
+        }
+
+    } else if (opcionSeleccionada == "Cambiar Email") {
+        QString nuevoEmail = QInputDialog::getText(this, "Cambiar Email","Ingresa tu nuevo email:", QLineEdit::Normal,actual->getEmail(), &ok);
+        if (ok && !nuevoEmail.trimmed().isEmpty()) {
+            if (!nuevoEmail.contains("@") || !nuevoEmail.contains(".")) {
+                QMessageBox::warning(this, "Error", "El email ingresado no es válido.");
+                return;
+            }
+
+            auto confirmacion = QMessageBox::question(this, "Confirmar cambio","¿Deseas cambiar tu email a:\n" + nuevoEmail + "?",QMessageBox::Yes | QMessageBox::No);
+            if (confirmacion == QMessageBox::Yes) {
+                master->cambiarEmail(nuevoEmail.trimmed());
+            }
+        } else if (ok) {
+            QMessageBox::warning(this, "Error", "El email no puede estar vacío.");
+        }
+
+    } else if (opcionSeleccionada == "Cambiar Avatar") {
+        QString rutaNueva = QFileDialog::getOpenFileName(this, "Seleccionar nuevo avatar", "", "Imágenes (*.png *.jpg *.jpeg *.bmp)");
+        if (!rutaNueva.isEmpty()) {
+            auto confirmacion = QMessageBox::question(this, "Confirmar cambio","¿Deseas cambiar tu avatar a esta imagen?\n" + rutaNueva,QMessageBox::Yes | QMessageBox::No);
+            if (confirmacion == QMessageBox::Yes) {
+                master->cambiarAvatar(rutaNueva);
+                lblAvatar->setPixmap(QPixmap(rutaNueva));
+            }
         }
     }
 }

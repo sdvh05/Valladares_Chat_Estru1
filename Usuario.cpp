@@ -390,7 +390,7 @@ void Usuario::EliminarAmigo(const QString& solicitante) {
     }
 }
 
-
+///GETTERS
 //---------------------------------------------------------------------------------------------------------------
 
     QString Usuario::getUsername() const { return username; }

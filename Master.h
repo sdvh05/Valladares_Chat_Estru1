@@ -79,7 +79,12 @@ public:
 
 
     //Cambios
+    void actualizarLineaUsuario(const QStringList& nuevaLinea);
     static bool cambiarContrasena(const QString& username, const QString& pregunta, const QString& respuesta, const QString& nuevaContrasena);
+    void cambiarNombre(const QString& nuevo);
+    void cambiarEmail(const QString& nuevo);
+    void cambiarEdad(int nuevaEdad);
+    void cambiarAvatar(const QString& nuevaRuta);
 };
 
 #endif // MASTER_H

@@ -9,7 +9,12 @@
 #include <QPixmap>
 #include <QDebug>
 #include <QScrollBar>
+#include <QComboBox>
+#include <QTimer>
+#include <QFile>
+#include <QTextStream>
 
+// Constructor
 Chat::Chat(Master* master, QWidget *parent)
     : QWidget(parent), master(master) {
     crearLayout();
@@ -22,6 +27,7 @@ void Chat::setLoginVentana(QWidget *ventana) {
     loginVentana = ventana;
 }
 
+// Crea todo el layout de la ventana principal
 void Chat::crearLayout() {
     // PANEL DE PERFIL
     QVBoxLayout *layoutPerfil = new QVBoxLayout;
@@ -82,22 +88,31 @@ void Chat::crearLayout() {
         ventanaAmigos->show();
     });
 
-    connect(btnCerrarSesion, &QPushButton::clicked, this, [this]() {
-        LoginLogout();
-    });
-
+    connect(btnCerrarSesion, &QPushButton::clicked, this, &Chat::LoginLogout);
     connect(btnEliminar, &QPushButton::clicked, this, [this]() {
         Eliminar(listaContactos->currentItem());
     });
     connect(btnStickers, &QPushButton::clicked, this, &Chat::mostrarStickersPopup);
 
+    // COMBOBOX + LISTA DE CONTACTOS (panel central)
+    QVBoxLayout* layoutCentral = new QVBoxLayout;
+    comboOrdenamiento = new QComboBox;
+    comboOrdenamiento->addItem("Default");
+    comboOrdenamiento->addItem("A-Z");
+    comboOrdenamiento->addItem("Chat Length");
 
-    // LISTA DE CONTACTOS
+    connect(comboOrdenamiento, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &Chat::ordenarContactos);
+
     listaContactos = new QListWidget;
     connect(listaContactos, &QListWidget::itemClicked, this, &Chat::seleccionarContacto);
 
+    layoutCentral->addWidget(comboOrdenamiento);
+    layoutCentral->addWidget(listaContactos);
+
     // PANEL DE CHAT
     QVBoxLayout *layoutChat = new QVBoxLayout;
+
     lblNombreContacto = new QLabel("Selecciona un contacto");
 
     chatScrollArea = new QScrollArea;
@@ -123,7 +138,7 @@ void Chat::crearLayout() {
     // LAYOUT PRINCIPAL
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->addLayout(panelIzquierdo, 2);
-    mainLayout->addWidget(listaContactos, 2);
+    mainLayout->addLayout(layoutCentral, 2);
     mainLayout->addLayout(layoutChat, 4);
 
     setLayout(mainLayout);
@@ -131,11 +146,41 @@ void Chat::crearLayout() {
     resize(900, 600);
 }
 
-//--------------------------------------------------------------------------------------------
+
+// ---------------- ORDENAMIENTO ---------------------
+
+void Chat::ordenarContactos(int index) {
+    QList<Usuario*> amigos;
+
+    switch (index) {
+    case 0:
+        amigos = master->cargarAmigos(); break;
+    case 1:
+        amigos = master->CargarAmigosAlfabetico(); break;
+    case 2:
+        amigos = master->CargarAmigosLength(); break;
+    default:
+        amigos = master->cargarAmigos(); break;
+    }
+
+    mostrarContactosConAvatares(amigos);
+}
+
 void Chat::mostrarContactosConAvatares() {
+    QList<Usuario*> amigos = master->cargarAmigos();
+    mostrarContactosConAvatares(amigos);
+}
+
+void Chat::mostrarContactosConAvatares(const QList<Usuario*>& amigos) {
     listaContactos->clear();
 
-    QList<Usuario*> amigos = master->cargarAmigos();
+    // Obtener las notificaciones pendientes
+    QMap<QString, int> conteoNotificaciones;
+    QList<QString> notificaciones = master->cargarNotificaciones();
+
+    for (const QString& usuario : notificaciones) {
+        conteoNotificaciones[usuario] = obtenerCantidadNotis(usuario);
+    }
 
     for (Usuario* amigo : amigos) {
         QWidget* itemWidget = new QWidget;
@@ -158,6 +203,21 @@ void Chat::mostrarContactosConAvatares() {
         layout->addWidget(avatarLabel);
         layout->addLayout(infoLayout);
 
+        // Si hay notificaciones para este usuario, añadir un contador visual
+        QString usernameAmigo = amigo->getUsername();
+        if (conteoNotificaciones.contains(usernameAmigo)) {
+            int cantidad = conteoNotificaciones[usernameAmigo];
+
+            QLabel* lblNotificacion = new QLabel(QString::number(cantidad));
+            lblNotificacion->setFixedSize(24, 24);
+            lblNotificacion->setAlignment(Qt::AlignCenter);
+            lblNotificacion->setStyleSheet(
+                "background-color: blue; color: white; border-radius: 12px; font-weight: bold;"
+                );
+
+            layout->addWidget(lblNotificacion);
+        }
+
         QListWidgetItem* item = new QListWidgetItem(listaContactos);
         item->setSizeHint(itemWidget->sizeHint());
         item->setData(Qt::UserRole, amigo->getUsername());
@@ -166,6 +226,9 @@ void Chat::mostrarContactosConAvatares() {
         listaContactos->setItemWidget(item, itemWidget);
     }
 }
+
+
+// -------------------------------------
 
 void Chat::mostrarStickersPopup() {
     if (contactoActual.isEmpty()) {
@@ -197,22 +260,17 @@ void Chat::mostrarStickersPopup() {
 
         connect(botonSticker, &QPushButton::clicked, this, [this, ruta, dialogo]() {
             QString linea = master->getUsername() + ": STICKER," + ruta;
-
-            // Guardar en el archivo del chat
             QFile archivo(rutaArchivoChatActual);
             if (archivo.open(QIODevice::Append | QIODevice::Text)) {
                 QTextStream out(&archivo);
                 out << linea << "\n";
                 archivo.close();
             }
-
-            // Recargar chat para mostrarlo actualizado
             seleccionarContacto(listaContactos->currentItem());
-
             dialogo->accept();
         });
 
-        grid->addWidget(botonSticker, i / 2, i % 2);  // 2 columnas
+        grid->addWidget(botonSticker, i / 2, i % 2);
     }
 
     layout->addLayout(grid);
@@ -220,7 +278,6 @@ void Chat::mostrarStickersPopup() {
     dialogo->exec();
 }
 
-//--------------------------------------------------------------------------------------------
 void Chat::LoginLogout() {
     QMessageBox::StandardButton confirmacion;
     confirmacion = QMessageBox::question(this, "Cerrar sesión", "¿Estás seguro de que quieres cerrar sesión?", QMessageBox::Yes | QMessageBox::No);
@@ -240,7 +297,6 @@ void Chat::Eliminar(QListWidgetItem *item) {
     }
 
     QString usernameEliminar = item->data(Qt::UserRole).toString();
-
     QMessageBox::StandardButton confirmacion = QMessageBox::question(
         this,
         "Eliminar contacto",
@@ -259,12 +315,10 @@ void Chat::Eliminar(QListWidgetItem *item) {
 void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
     QWidget* mensajeWidget = new QWidget;
     QHBoxLayout* layout = new QHBoxLayout(mensajeWidget);
-
     QLabel* label = new QLabel;
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    // Detectar si es un sticker
     if (mensaje.startsWith("STICKER,")) {
         QString rutaSticker = mensaje.mid(QString("STICKER,").length());
         QPixmap pix(rutaSticker);
@@ -275,15 +329,9 @@ void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
             label->setText("[Sticker no encontrado]");
         }
     } else {
-        // Mensaje de texto normal
         label->setText(mensaje);
-        label->setStyleSheet(QString(
-                                 "background-color: %1; color: %2; padding: 8px; border-radius: 10px;"
-                                 ).arg(
-                                     esPropio ? "#cce5ff" : "#e0e0e0"  // Fondo azul/gris
-                                     ).arg(
-                                     "#000000"  // Texto negro
-                                     ));
+        label->setStyleSheet(QString("background-color: %1; color: %2; padding: 8px; border-radius: 10px;")
+                                 .arg(esPropio ? "#cce5ff" : "#e0e0e0").arg("#000000"));
     }
 
     if (esPropio) {
@@ -297,12 +345,10 @@ void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
     layout->setContentsMargins(10, 5, 10, 5);
     chatLayout->addWidget(mensajeWidget);
 
-    // Desplazar hacia abajo automáticamente
     QTimer::singleShot(0, [this]() {
         chatScrollArea->verticalScrollBar()->setValue(chatScrollArea->verticalScrollBar()->maximum());
     });
 }
-
 
 void Chat::seleccionarContacto(QListWidgetItem *item) {
     contactoActual = item->data(Qt::UserRole).toString();
@@ -325,11 +371,12 @@ void Chat::seleccionarContacto(QListWidgetItem *item) {
         nuevoArchivo.close();
     }
 
+    master->leerNotificacion(contactoActual);
+
     QFile archivo(rutaArchivoChatActual);
     if (archivo.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&archivo);
 
-        // Limpiar mensajes anteriores
         QLayoutItem* item;
         while ((item = chatLayout->takeAt(0)) != nullptr) {
             delete item->widget();
@@ -350,6 +397,8 @@ void Chat::seleccionarContacto(QListWidgetItem *item) {
         }
         archivo.close();
     }
+
+    //mostrarContactosConAvatares();
 }
 
 void Chat::enviarMensaje() {
@@ -367,6 +416,7 @@ void Chat::enviarMensaje() {
         pilaMensajes.push(mensaje);
         inputMensaje->clear();
         agregarMensajeWidget(mensaje, true);
+        master->enviarNotificacion(contactoActual);
     }
 }
 
@@ -375,4 +425,24 @@ void Chat::deshacerMensaje() {
         QString ultimo = pilaMensajes.pop();
         agregarMensajeWidget("[Mensaje eliminado: \"" + ultimo + "\"]", true);
     }
+}
+
+int Chat::obtenerCantidadNotis(const QString& usuario) {
+    QString ruta = QString("Notificacion/%1.txt").arg(master->getUsername());
+    QFile archivo(ruta);
+    if (!archivo.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return 0;
+    }
+
+    QTextStream in(&archivo);
+    while (!in.atEnd()) {
+        QString linea = in.readLine().trimmed();
+        QStringList partes = linea.split(',');
+
+        if (partes.size() == 2 && partes[0].trimmed() == usuario) {
+            return partes[1].trimmed().toInt();
+        }
+    }
+
+    return 0;
 }

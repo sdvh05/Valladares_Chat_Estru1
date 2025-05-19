@@ -130,19 +130,36 @@ void RecuperarPass::verificarRespuesta()
         return;
     }
 
+
     // Solicita nueva contraseña
     bool ok;
-    QString nuevaContrasena = QInputDialog::getText(this, "Nueva contraseña",
-                                                    "Ingresa tu nueva contraseña:",
-                                                    QLineEdit::Password,
-                                                    "", &ok);
-    if (!ok || nuevaContrasena.isEmpty()) {
-        QMessageBox::information(this, "Cancelado", "No se cambió la contraseña.");
+    QString nuevaContrasena = QInputDialog::getText(this, "Nueva contraseña","Ingresa tu nueva contraseña:", QLineEdit::Password,"", &ok);
+    if (nuevaContrasena.length() < 6) {
+        QMessageBox::warning(this, "Contraseña débil", "La contraseña debe tener al menos 6 caracteres.");
         return;
     }
 
-    if (nuevaContrasena.length() < 4) {
-        QMessageBox::warning(this, "Contraseña inválida", "La nueva contraseña debe tener al menos 4 caracteres.");
+    bool tieneLetra = false;
+    bool tieneNumero = false;
+    bool tieneMayuscula = false;
+    bool tieneMinuscula = false;
+
+    for (const QChar &c : nuevaContrasena) {
+        if (c.isLetter()) {
+            tieneLetra = true;
+            if (c.isUpper()) tieneMayuscula = true;
+            else tieneMinuscula = true;
+        }
+        else if (c.isDigit()) tieneNumero = true;
+    }
+
+    if (!tieneLetra || !tieneNumero) {
+        QMessageBox::warning(this, "Contraseña débil", "La contraseña debe contener letras y números.");
+        return;
+    }
+
+    if (!tieneMayuscula || !tieneMinuscula) {
+        QMessageBox::warning(this, "Contraseña débil", "La contraseña debe contener mayúsculas y minúsculas.");
         return;
     }
 

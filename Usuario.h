@@ -35,6 +35,7 @@ public:
     void NegarSolicitud(const QString &solicitante);
     void EliminarAmigo(const QString &amigo);
 
+
     QString getUsername() const;
     QString getNombreCompleto() const;
     QString getEmail() const;
@@ -48,9 +49,13 @@ public:
 
     QStringList obtenerAmigos();
 
+
+
 private:
     void crearCarpetas();
     void crearArchivosIniciales();
+    void agregarNotificacionNuevoAmigo(const QString& nuevoAmigo);
+
 
     QStringList leerUsuariosRegistrados();
     void actualizarEstadosExistentes(const QStringList &usuarios);

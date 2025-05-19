@@ -63,8 +63,20 @@ public:
     QList<Usuario*> getUsers2() const;
     QList<Usuario*> getUsers3() const;
 
+
+
     QList<QString> getUsernamesPorEstado(int estado) const;
     QList<Usuario*> cargarAmigos();
+
+    //Ordenamientos
+    QList<Usuario*> CargarAmigosAlfabetico();
+    QList<Usuario*> CargarAmigosLength();
+
+    //Notificaciones
+    void enviarNotificacion(const QString& receptor);
+    void leerNotificacion(const QString& receptor);
+    QList<QString> cargarNotificaciones() const;
+
 
     //Cambios
     static bool cambiarContrasena(const QString& username, const QString& pregunta, const QString& respuesta, const QString& nuevaContrasena);

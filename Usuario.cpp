@@ -63,6 +63,12 @@ void Usuario::crearCarpetas() {
             throw std::runtime_error("Error creando directorios");
         }
     }
+    if (!dir.exists("Notificacion")) {
+        if (!dir.mkpath("Notificacion")) {
+            qDebug() << "Error creando carpeta Notificacion";
+            throw std::runtime_error("Error creando carpeta de notificaciones");
+        }
+    }
 }
 
 void Usuario::crearArchivosIniciales() {
@@ -114,6 +120,26 @@ void Usuario::crearEstadoNuevoUsuario(const QStringList &usuarios) {
         archivo.close();
     }
 }
+
+void Usuario::agregarNotificacionNuevoAmigo(const QString& nuevoAmigo) {
+    QString rutaPropia = QString("Notificacion/%1.txt").arg(username);
+    QString rutaAmigo = QString("Notificacion/%1.txt").arg(nuevoAmigo);
+
+    QFile archivoPropio(rutaPropia);
+    if (archivoPropio.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&archivoPropio);
+        out << nuevoAmigo << ",0\n";
+        archivoPropio.close();
+    }
+
+    QFile archivoAmigo(rutaAmigo);
+    if (archivoAmigo.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&archivoAmigo);
+        out << username << ",0\n";
+        archivoAmigo.close();
+    }
+}
+
 
 void Usuario::actualizarEstado(const QString &usuario, const QString &objetivo, int estado) {
     QString ruta = QString("Estados/%1.txt").arg(usuario);
@@ -305,6 +331,7 @@ void Usuario::aceptarSolicitud(const QString &solicitante) {
     actualizarEstado(username, solicitante, 3);
     actualizarEstado(solicitante, username, 3);
     crearChat(solicitante);
+    agregarNotificacionNuevoAmigo(solicitante);
 
     QMessageBox::information(nullptr, "Éxito", "Solicitud aceptada correctamente \n Ahora son amigos con: "+solicitante);
 }
@@ -362,6 +389,8 @@ void Usuario::EliminarAmigo(const QString& solicitante) {
         QMessageBox::information(nullptr, "Hecho", "Tú y " + solicitante + " ya no son amigos. No se encontró historial de chat.");
     }
 }
+
+
 //---------------------------------------------------------------------------------------------------------------
 
     QString Usuario::getUsername() const { return username; }

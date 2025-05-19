@@ -13,7 +13,7 @@ Master::~Master() {
     todosLosUsuarios.clear();
 }
 
-// Validar credenciales leyendo allaccs.txt
+// Validar Login leyendo allaccs.txt
 bool Master::validateCredentials(const QString &username, const QString &password) {
     QFile file("allaccs.txt");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return false;
@@ -97,46 +97,7 @@ void Master::cargarUsuarios() {
 
 
 
-/*
-void Master::cargarUsuarios() {
-    for (Usuario* u : todosLosUsuarios) {
-        delete u;
-    }
-    todosLosUsuarios.clear();
-
-    QFile file("allaccs.txt");
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
-
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-        QStringList parts = in.readLine().split(',');
-        if (parts.size() >= 9) {
-            Usuario* nuevo = new Usuario(
-                parts[0], parts[1], parts[2], parts[3],
-                parts[4].toInt(), parts[5],
-                parts[6], parts[7], parts[8].toInt(), false
-                );
-            todosLosUsuarios.append(nuevo);
-
-            // DEBUG: Mostrar los datos cargados
-            qDebug() << "-------Usuario------";
-            qDebug() << "Username:" << parts[0];
-            qDebug() << "Nombre:" << parts[1];
-            qDebug() << "Correo:" << parts[2];
-            qDebug() << "Password:" << parts[3];
-            qDebug() << "Edad" << parts[4].toInt();
-            qDebug() << "Avatar (ruta foto):" << parts[5];
-            qDebug() << "Pregunta" << parts[6];
-            qDebug() << "Respuesta" << parts[7];
-            qDebug() << "Activo:" << parts[8].toInt(); // 0= Ofline 1 =Online
-            qDebug() << "";
-        } else {
-            qDebug() << "Línea inválida o incompleta en allaccs.txt";
-        }
-    }
-    file.close();
-}
-*/
+//--------------------------------------------------------------------------------------------------
 
 // Login
 bool Master::login(const QString &username, const QString &password) {
@@ -246,7 +207,7 @@ Usuario* Master::buscarUsuarioPorNombre(const QString &username) const {
     return nullptr;
 }
 
-// Filtrado usuarios por estado leyendo archivo de estados -- AmigosManejo
+//Amigos
 QList<Usuario*> Master::getUsersPorEstado(int estadoBuscado) const {
     QList<Usuario*> resultado;
     QString archivoEstados = getTXTEstados();
@@ -289,26 +250,7 @@ QList<Usuario*> Master::getUsers3() const { return getUsersPorEstado(3); } //Get
 
 
 
-/*
-QQList<Usuario*> Master::cargarAmigos() {
-    cargarUsuarios(); // Aseguramos que todosLosUsuarios está actualizado
 
-    QList<QString> amigosUsernames = getUsernamesPorEstado(3); // Solo los usernames con estado 3
-    QList<Usuario*> listaCompletaDeAmigos;
-
-    for (const QString& usernameAmigo : amigosUsernames) {
-        for (Usuario* usuarioCompleto : todosLosUsuarios) {
-            if (usuarioCompleto->getUsername() == usernameAmigo) {
-                listaCompletaDeAmigos.append(usuarioCompleto);
-                break;
-            }
-        }
-    }
-
-    return listaCompletaDeAmigos;
-}
-}
-*/
 
 QList<QString> Master::getUsernamesPorEstado(int estadoBuscado) const {
     QList<QString> resultado;
@@ -342,6 +284,8 @@ QList<QString> Master::getUsernamesPorEstado(int estadoBuscado) const {
     return resultado;
 }
 
+//CARGAR AMIGOS
+//----------------------------------------------------------------------------------------------------------------------------------------
 QList<Usuario*> Master::cargarAmigos() {
     cargarUsuarios(); // Asegura que todosLosUsuarios está actualizado
 
@@ -369,6 +313,85 @@ QList<Usuario*> Master::cargarAmigos() {
 
     //qDebug() << "Total amigos agregados:" << listaCompletaDeAmigos.size();
     return listaCompletaDeAmigos;
+}
+
+////ORDENAMIENTO
+QList<Usuario*> Master::CargarAmigosAlfabetico() {
+    QList<Usuario*> amigos = cargarAmigos();
+    int n = amigos.size();
+
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - i - 1; ++j) {
+            QString nombreA = amigos[j]->getUsername().toLower();
+            QString nombreB = amigos[j + 1]->getUsername().toLower();
+
+            if (nombreA > nombreB) {
+                Usuario* temp = amigos[j];
+                amigos[j] = amigos[j + 1];
+                amigos[j + 1] = temp;
+            }
+        }
+    }
+
+    return amigos;
+}
+
+
+QList<Usuario*> Master::CargarAmigosLength() {
+    QList<Usuario*> amigos = cargarAmigos();
+    int n = amigos.size();
+    QString user1 = getUsername();
+
+    QVector<int> lineCounts(n, 0);
+
+    // Llenamos los conteos
+    for (int i = 0; i < n; ++i) {
+        QString user2 = amigos[i]->getUsername();
+
+        QString archivo1 = "Chats/" + user1 + "-" + user2 + ".txt";
+        QString archivo2 = "Chats/" + user2 + "-" + user1 + ".txt";
+        QString ruta = QFile::exists(archivo1) ? archivo1 :
+                           (QFile::exists(archivo2) ? archivo2 : archivo1);
+
+        if (!QFile::exists(ruta)) {
+            QFile nuevoArchivo(ruta);
+            nuevoArchivo.open(QIODevice::WriteOnly);
+            nuevoArchivo.close();
+            lineCounts[i] = 0;
+            continue;
+        }
+
+        QFile file(ruta);
+        int count = 0;
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                in.readLine();
+                count++;
+            }
+            file.close();
+        }
+        lineCounts[i] = count;
+    }
+
+    // Bubble sort
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - i - 1; ++j) {
+            if (lineCounts[j] < lineCounts[j + 1]) {
+                // Intercambiamos líneas
+                int tempLine = lineCounts[j];
+                lineCounts[j] = lineCounts[j + 1];
+                lineCounts[j + 1] = tempLine;
+
+                // Intercambiamos usuarios
+                Usuario* tempUser = amigos[j];
+                amigos[j] = amigos[j + 1];
+                amigos[j + 1] = tempUser;
+            }
+        }
+    }
+
+    return amigos;
 }
 
 
@@ -421,6 +444,126 @@ bool Master::cambiarContrasena(const QString& username, const QString& pregunta,
     QMessageBox::warning(nullptr, "Error", "Usuario o datos de seguridad incorrectos.");
     return false;
 }
+
+//NOTIFICACIONES
+//--------------------------------------------------------------------------------------------------------------
+void Master::enviarNotificacion(const QString& receptor) {
+    QString ruta = QString("Notificacion/%1.txt").arg(receptor);
+    QFile archivo(ruta);
+    QString username= getUsername();
+
+    if (!archivo.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        qDebug() << "No se pudo abrir el archivo de notificaciones de" << receptor;
+        return;
+    }
+
+    QStringList lineas;
+    QTextStream in(&archivo);
+    bool encontrado = false;
+
+    while (!in.atEnd()) {
+        QString linea = in.readLine().trimmed();
+        QStringList partes = linea.split(',');
+
+        if (partes.size() == 2 && partes[0] == username) {
+            int conteo = partes[1].toInt();
+            partes[1] = QString::number(conteo + 1);
+            linea = partes.join(',');
+            encontrado = true;
+        }
+
+        lineas << linea;
+    }
+
+    if (!encontrado) {
+        lineas << username + ",1";
+    }
+
+    archivo.resize(0); // Limpiar archivo antes de reescribir
+    QTextStream out(&archivo);
+    for (const QString& l : lineas) {
+        out << l << "\n";
+    }
+
+    archivo.close();
+}
+
+void Master::leerNotificacion(const QString& receptor) {
+    QString username= getUsername();
+    QString ruta = QString("Notificacion/%1.txt").arg(username);
+    QFile archivo(ruta);
+
+    if (!archivo.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        qDebug() << "No se pudo abrir el archivo de notificaciones del usuario actual";
+        return;
+    }
+
+    QStringList lineas;
+    QTextStream in(&archivo);
+
+    while (!in.atEnd()) {
+        QString linea = in.readLine().trimmed();
+        QStringList partes = linea.split(',');
+
+        if (partes.size() == 2 && partes[0] == receptor) {
+            partes[1] = "0";
+            linea = partes.join(',');
+        }
+
+        lineas << linea;
+    }
+
+    archivo.resize(0); // Vaciar archivo
+    QTextStream out(&archivo);
+    for (const QString& l : lineas) {
+        out << l << "\n";
+    }
+
+    archivo.close();
+}
+
+QList<QString> Master::cargarNotificaciones() const {
+    QList<QString> notificaciones;
+    QString ruta = QString("Notificacion/%1.txt").arg(getUsername());
+    QFile archivo(ruta);
+
+    if (!archivo.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "[DEBUG] No se pudo abrir el archivo de notificaciones de" << getUsername();
+        return notificaciones;
+    }
+
+    QTextStream in(&archivo);
+    QMap<QString, int> conteo;
+
+    while (!in.atEnd()) {
+        QString linea = in.readLine().trimmed();
+        if (!linea.isEmpty()) {
+            QStringList partes = linea.split(",");
+            if (partes.size() == 2) {
+                QString usuario = partes[0].trimmed();
+                int cantidad = partes[1].trimmed().toInt();
+
+                if (cantidad > 0) {
+                    conteo[usuario] = cantidad;
+                    notificaciones << usuario;
+                }
+            } else {
+                qDebug() << "[DEBUG] Línea malformada en notificaciones:" << linea;
+            }
+        }
+    }
+
+    archivo.close();
+
+    for (auto it = conteo.begin(); it != conteo.end(); ++it) {
+        qDebug() << " - Usuario:" << it.key() << "| Notificaciones:" << it.value();
+    }
+
+    return notificaciones;
+}
+
+
+
 
 
 

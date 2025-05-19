@@ -11,6 +11,7 @@
 #include <QScrollArea>
 #include <QComboBox>
 #include <QStack>
+#include <QTimer>
 
 #include "master.h"
 
@@ -29,6 +30,7 @@ private slots:
     void mostrarStickersPopup();
     void Eliminar(QListWidgetItem *item);
     void ordenarContactos(int index);
+    void refrescarPeriodicamente();
 
 private:
     // Métodos
@@ -66,6 +68,8 @@ private:
     QString contactoActual;
     QString rutaArchivoChatActual;
     QStack<QString> pilaMensajes;
+    QTimer* timerRefresco;
 };
 
 #endif // CHAT_H
+

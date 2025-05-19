@@ -21,6 +21,12 @@ Chat::Chat(Master* master, QWidget *parent)
     setWindowTitle("Chat - " + master->getUsername());
     master->cargarAmigos();
     mostrarContactosConAvatares();
+
+    //QTIMER
+    QTimer* timerRefresco = new QTimer(this);
+    connect(timerRefresco, &QTimer::timeout, this, &Chat::refrescarPeriodicamente);
+    timerRefresco->start(1000); // cada 1 segundo
+
 }
 
 void Chat::setLoginVentana(QWidget *ventana) {
@@ -273,6 +279,7 @@ void Chat::mostrarStickersPopup() {
         grid->addWidget(botonSticker, i / 2, i % 2);
     }
 
+    master->enviarNotificacion(contactoActual);
     layout->addLayout(grid);
     dialogo->setLayout(layout);
     dialogo->exec();
@@ -351,6 +358,8 @@ void Chat::agregarMensajeWidget(const QString& mensaje, bool esPropio) {
 }
 
 void Chat::seleccionarContacto(QListWidgetItem *item) {
+    if (!item) return;
+
     contactoActual = item->data(Qt::UserRole).toString();
     lblNombreContacto->setText("Chat con: @" + contactoActual);
 
@@ -360,46 +369,50 @@ void Chat::seleccionarContacto(QListWidgetItem *item) {
     QString archivo1 = "Chats/" + user1 + "-" + user2 + ".txt";
     QString archivo2 = "Chats/" + user2 + "-" + user1 + ".txt";
 
+    // Verifica cuál de los dos archivos existe
     if (QFile::exists(archivo1)) {
         rutaArchivoChatActual = archivo1;
     } else if (QFile::exists(archivo2)) {
         rutaArchivoChatActual = archivo2;
     } else {
+        // Si ninguno existe, crea uno nuevo usando el orden user1-user2
         rutaArchivoChatActual = archivo1;
         QFile nuevoArchivo(rutaArchivoChatActual);
         nuevoArchivo.open(QIODevice::WriteOnly);
         nuevoArchivo.close();
     }
 
+    // Limpia las notificaciones pendientes de este contacto
     master->leerNotificacion(contactoActual);
 
+    // Limpia el layout del chat antes de cargar los nuevos mensajes
+    QLayoutItem* itemLayout;
+    while ((itemLayout = chatLayout->takeAt(0)) != nullptr) {
+        if (itemLayout->widget()) itemLayout->widget()->deleteLater();
+        delete itemLayout;
+    }
+
+    // Carga los mensajes desde el archivo correspondiente
     QFile archivo(rutaArchivoChatActual);
     if (archivo.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&archivo);
-
-        QLayoutItem* item;
-        while ((item = chatLayout->takeAt(0)) != nullptr) {
-            delete item->widget();
-            delete item;
-        }
-
         while (!in.atEnd()) {
             QString linea = in.readLine();
             QStringList partes = linea.split(": ");
             if (partes.size() >= 2) {
                 QString autor = partes[0];
                 QString contenido = partes.mid(1).join(": ");
-                bool esPropio = (autor == master->getUsername());
+                bool esPropio = (autor == user1);
                 agregarMensajeWidget(contenido, esPropio);
             } else {
+
                 agregarMensajeWidget(linea, false);
             }
         }
         archivo.close();
     }
-
-    //mostrarContactosConAvatares();
 }
+
 
 void Chat::enviarMensaje() {
     QString mensaje = inputMensaje->text().trimmed();
@@ -445,4 +458,27 @@ int Chat::obtenerCantidadNotis(const QString& usuario) {
     }
 
     return 0;
+}
+
+void Chat::refrescarPeriodicamente() {
+    QString contactoAnterior = contactoActual;
+
+    //Refrescar con el Index de lo que tenga seleccionado en Combo Ordenamiento
+    //Similar a la logica de void ordenarContactos(int index)... el switch
+    //Es importante mantener el ordenamietno de los archivos al tener seleccionado ya sea default, A-Z, Length
+    //Al refrescar no volver a default, sino antes de mostrar las cosas cargamos el ordenamiento, y mantenemos el index seleccionado
+    int index=comboOrdenamiento->currentIndex();
+    ordenarContactos(index);
+     //Esta solucion no me funciono, ocupo no perder el ordenamiento a la hora de refrescar mi lista de contatos
+
+
+
+    for (int i = 0; i < listaContactos->count(); ++i) {
+        QListWidgetItem* item = listaContactos->item(i);
+        if (item->data(Qt::UserRole).toString() == contactoAnterior) {
+            listaContactos->setCurrentItem(item);
+            seleccionarContacto(item);
+            break;
+        }
+    }
 }

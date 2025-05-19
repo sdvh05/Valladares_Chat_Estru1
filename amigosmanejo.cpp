@@ -15,10 +15,10 @@
 AmigosManejo::AmigosManejo(Master* masterPtr, QWidget* parent)
     : QWidget(parent), master(masterPtr)
 {
-    // Para que la ventana tenga marco y botones
+
     setWindowFlags(Qt::Window);
     setWindowTitle("Gestión de Amigos");
-    resize(400, 500); // tamaño de la ventana
+    resize(400, 500);
 
     setupUI();
 
